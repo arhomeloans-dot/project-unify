@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Orion — Project Unify Metrics Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #e2e8f0;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            color: #94a3b8;
+        }
+        
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #ef4444;
+            animation: pulse 2s infinite;
+        }
+        
+        .status-dot.healthy {
+            background: #22c55e;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .card {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 12px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .card-title {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #94a3b8;
+            margin-bottom: 12px;
+        }
+        
+        .card-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #60a5fa;
+            margin-bottom: 4px;
+        }
+        
+        .card-unit {
+            font-size: 14px;
+            color: #64748b;
+        }
+        
+        .card-meta {
+            font-size: 12px;
+            color: #475569;
+            margin-top: 8px;
+            border-top: 1px solid rgba(148, 163, 184, 0.1);
+            padding-top: 8px;
+        }
+        
+        .tier-breakdown {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-top: 20px;
+        }
+        
+        .tier-box {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(148, 163, 184, 0.15);
+            border-radius: 8px;
+            padding: 12px;
+            text-align: center;
+        }
+        
+        .tier-name {
+            font-size: 11px;
+            color: #94a3b8;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+        
+        .tier-count {
+            font-size: 20px;
+            font-weight: bold;
+            color: #60a5fa;
+        }
+        
+        .tier-cost {
+            font-size: 10px;
+            color: #64748b;
+            margin-top: 4px;
+        }
+        
+        .charts {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        @media (max-width: 768px) {
+            .charts {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .chart-card {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 12px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .chart-card h3 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #e2e8f0;
+            margin-bottom: 16px;
+        }
+        
+        .threshold-control {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 12px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            margin-bottom: 30px;
+        }
+        
+        .threshold-control h3 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #e2e8f0;
+            margin-bottom: 16px;
+        }
+        
+        .slider-group {
+            margin-bottom: 16px;
+        }
+        
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #94a3b8;
+            margin-bottom: 8px;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            background: rgba(148, 163, 184, 0.2);
+            border-radius: 3px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(96, 165, 250, 0.5);
+        }
+        
+        input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 0 10px rgba(96, 165, 250, 0.5);
+        }
+        
+        .footer {
+            text-align: center;
+            font-size: 12px;
+            color: #475569;
+            padding-top: 20px;
+            border-top: 1px solid rgba(148, 163, 184, 0.1);
+            margin-top: 30px;
+        }
+        
+        .error {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 8px;
+            padding: 16px;
+            color: #fca5a5;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>⚡ Orion — Project Unify Metrics</h1>
+            <div class="status">
+                <div class="status-dot" id="statusDot"></div>
+                <span id="statusText">Connecting to daemon...</span>
+            </div>
+        </div>
+        
+        <div id="errorBox"></div>
+        
+        <!-- Key Metrics -->
+        <div class="grid">
+            <div class="card">
+                <div class="card-title">Total Requests</div>
+                <div class="card-value" id="totalRequests">0</div>
+                <div class="card-meta">Lifetime routing operations</div>
+            </div>
+            
+            <div class="card">
+                <div class="card-title">Avg Latency</div>
+                <div class="card-value"><span id="avgLatency">0</span><span class="card-unit">ms</span></div>
+                <div class="card-meta">Weighted average across all tiers</div>
+            </div>
+            
+            <div class="card">
+                <div class="card-title">Total Cost</div>
+                <div class="card-value">$<span id="totalCost">0.00</span></div>
+                <div class="card-meta">Cumulative API costs</div>
+            </div>
+            
+            <div class="card">
+                <div class="card-title">Error Rate</div>
+                <div class="card-value"><span id="errorRate">0</span><span class="card-unit">%</span></div>
+                <div class="card-meta">Failed requests / total</div>
+            </div>
+            
+            <div class="card">
+                <div class="card-title">Failover Events</div>
+                <div class="card-value" id="failoverEvents">0</div>
+                <div class="card-meta">Tier escalations due to timeout</div>
+            </div>
+            
+            <div class="card">
+                <div class="card-title">Avg Cost/Doc</div>
+                <div class="card-value">$<span id="avgCostPerDoc">0.0000</span></div>
+                <div class="card-meta">Cost per routing decision</div>
+            </div>
+        </div>
+        
+        <!-- Tier Breakdown -->
+        <div class="card" style="margin-bottom: 30px;">
+            <div class="card-title">Routing Breakdown by Tier</div>
+            <div class="tier-breakdown">
+                <div class="tier-box">
+                    <div class="tier-name">Tier 1</div>
+                    <div class="tier-name" style="font-size: 10px; font-weight: normal;">Gemma2:9b (T1)</div>
+                    <div class="tier-count" id="tier1Count">0</div>
+                    <div class="tier-cost">$<span id="tier1Cost">0.00</span></div>
+                </div>
+                <div class="tier-box">
+                    <div class="tier-name">Tier 2a</div>
+                    <div class="tier-name" style="font-size: 10px; font-weight: normal;">Llama3.1 (T2)</div>
+                    <div class="tier-count" id="tier2kimiCount">0</div>
+                    <div class="tier-cost">$<span id="tier2kimiCost">0.00</span></div>
+                </div>
+                <div class="tier-box">
+                    <div class="tier-name">Tier 2b</div>
+                    <div class="tier-name" style="font-size: 10px; font-weight: normal;">Kimi-K3 (T3a)</div>
+                    <div class="tier-count" id="tier2glmCount">0</div>
+                    <div class="tier-cost">$<span id="tier2glmCost">0.00</span></div>
+                </div>
+                <div class="tier-box">
+                    <div class="tier-name">Tier 3</div>
+                    <div class="tier-name" style="font-size: 10px; font-weight: normal;">GLM 5.2 (T3b)</div>
+                    <div class="tier-count" id="tier3Count">0</div>
+                    <div class="tier-cost">$<span id="tier3Cost">0.00</span></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Complexity Thresholds (Future Feature) -->
+        <div class="threshold-control">
+            <h3>⚙️ Complexity Thresholds (Per-Machine Tuning)</h3>
+            <p style="font-size: 12px; color: #94a3b8; margin-bottom: 16px;">
+                Adjust when to escalate from one tier to the next. Currently hardcoded; Orion dashboard coming soon.
+            </p>
+            <div class="slider-group">
+                <div class="slider-label">
+                    <span>Tier 1 → Tier 2 threshold</span>
+                    <span id="t2ValueDisplay">0.80</span>
+                </div>
+                <input type="range" id="t2Slider" min="0.5" max="0.9" step="0.05" value="0.80" disabled>
+                <div style="font-size: 11px; color: #64748b; margin-top: 4px;">Routes below this complexity to Tier 1 (Local)</div>
+            </div>
+            <div class="slider-group">
+                <div class="slider-label">
+                    <span>Tier 2 → Tier 3 threshold</span>
+                    <span id="t3ValueDisplay">0.95</span>
+                </div>
+                <input type="range" id="t3Slider" min="0.8" max="0.99" step="0.05" value="0.95" disabled>
+                <div style="font-size: 11px; color: #64748b; margin-top: 4px;">Routes above this complexity to Tier 3 (HuggingFace)</div>
+            </div>
+            <div style="margin-top: 12px; padding: 12px; background: rgba(59, 130, 246, 0.1); border-radius: 6px; border-left: 3px solid #3b82f6;">
+                <div style="font-size: 11px; color: #93c5fd;">
+                    ℹ️ Live threshold adjustment is a future Orion feature. Each machine (Nitro, Axiom, Traktor, Studio) will have independent tuning.
+                </div>
+            </div>
+        </div>
+        
+        <!-- Charts -->
+        <div class="charts">
+            <div class="chart-card">
+                <h3>Requests per Tier</h3>
+                <canvas id="tierChart"></canvas>
+            </div>
+            <div class="chart-card">
+                <h3>Cost Distribution</h3>
+                <canvas id="costChart"></canvas>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>Project Unify Daemon Metrics | Updates every 3 seconds | Localhost:11435</p>
+        </div>
+    </div>
+    
+    <script>
+        const DAEMON_URL = "http://127.0.0.1:11435";
+        const UPDATE_INTERVAL = 3000; // 3 seconds
+        
+        let tierChart = null;
+        let costChart = null;
+        
+        async function fetchMetrics() {
+            try {
+                const response = await fetch(`${DAEMON_URL}/metrics`);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                return await response.json();
+            } catch (error) {
+                console.error("Fetch error:", error);
+                return null;
+            }
+        }
+        
+        async function updateDashboard() {
+            const metrics = await fetchMetrics();
+            
+            if (!metrics) {
+                document.getElementById("statusDot").classList.remove("healthy");
+                document.getElementById("statusText").textContent = "Daemon unreachable";
+                showError("Cannot connect to daemon at " + DAEMON_URL + ". Is it running?");
+                return;
+            }
+            
+            hideError();
+            document.getElementById("statusDot").classList.add("healthy");
+            document.getElementById("statusText").textContent = "Connected";
+            
+            // Update metrics
+            const total = metrics.total_requests;
+            const errors = metrics.performance.errors;
+            const errorRate = total > 0 ? ((errors / total) * 100).toFixed(1) : "0";
+            const avgCostPerDoc = total > 0 ? (metrics.cost.total_usd / total).toFixed(4) : "0.0000";
+            
+            document.getElementById("totalRequests").textContent = total;
+            document.getElementById("avgLatency").textContent = metrics.performance.avg_latency_ms.toFixed(0);
+            document.getElementById("totalCost").textContent = metrics.cost.total_usd.toFixed(6);
+            document.getElementById("errorRate").textContent = errorRate;
+            document.getElementById("failoverEvents").textContent = metrics.failover_events;
+            document.getElementById("avgCostPerDoc").textContent = avgCostPerDoc;
+            
+            // Tier breakdown
+            const routing = metrics.routing_breakdown;
+            document.getElementById("tier1Count").textContent = routing.tier1_local;
+            document.getElementById("tier2kimiCount").textContent = routing.tier2_llama;
+            document.getElementById("tier2glmCount").textContent = routing.tier3_kimi;
+            document.getElementById("tier3Count").textContent = routing.tier3_glm;
+            
+            // Tier costs
+            const costs = metrics.cost.breakdown;
+            document.getElementById("tier1Cost").textContent = (costs.tier1_local || 0).toFixed(6);
+            document.getElementById("tier2kimiCost").textContent = (costs.tier2_llama || 0).toFixed(6);
+            document.getElementById("tier2glmCost").textContent = (costs.tier3_kimi || 0).toFixed(6);
+            document.getElementById("tier3Cost").textContent = (costs.tier3_glm || 0).toFixed(6);
+            
+            // Update charts
+            updateCharts(metrics);
+        }
+        
+        function updateCharts(metrics) {
+            const routing = metrics.routing_breakdown;
+            const costs = metrics.cost.breakdown;
+            
+            // Tier chart
+            if (!tierChart) {
+                const ctx = document.getElementById("tierChart").getContext("2d");
+                tierChart = new Chart(ctx, {
+                    type: "doughnut",
+                    data: {
+                        labels: ["Gemma2 (T1)", "Llama3.1 (T2)", "Kimi-K3 (T3a)", "GLM 5.2 (T3b)"],
+                        datasets: [{
+                            data: [routing.tier1_local, routing.tier2_llama, routing.tier3_kimi, routing.tier3_glm],
+                            backgroundColor: ["#3b82f6", "#8b5cf6", "#ec4899", "#f59e0b"],
+                            borderColor: "rgba(30, 41, 59, 0.8)",
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: { labels: { color: "#e2e8f0" } }
+                        }
+                    }
+                });
+            } else {
+                tierChart.data.datasets[0].data = [routing.tier1_local, routing.tier2_llama, routing.tier3_kimi, routing.tier3_glm];
+                tierChart.update();
+            }
+            
+            // Cost chart
+            if (!costChart) {
+                const ctx = document.getElementById("costChart").getContext("2d");
+                costChart = new Chart(ctx, {
+                    type: "bar",
+                    data: {
+                        labels: ["Gemma2 (T1)", "Llama3.1 (T2)", "Kimi-K3 (T3a)", "GLM 5.2 (T3b)"],
+                        datasets: [{
+                            label: "Cost ($)",
+                            data: [costs.tier1_local || 0, costs.tier2_llama || 0, costs.tier3_kimi || 0, costs.tier3_glm || 0],
+                            backgroundColor: ["#3b82f6", "#8b5cf6", "#ec4899", "#f59e0b"],
+                            borderRadius: 6
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            y: { ticks: { color: "#e2e8f0" }, grid: { color: "rgba(148, 163, 184, 0.1)" } }
+                        },
+                        plugins: {
+                            legend: { labels: { color: "#e2e8f0" } }
+                        }
+                    }
+                });
+            } else {
+                costChart.data.datasets[0].data = [costs.tier1_local || 0, costs.tier2_llama || 0, costs.tier3_kimi || 0, costs.tier3_glm || 0];
+                costChart.update();
+            }
+        }
+        
+        function showError(message) {
+            const errorBox = document.getElementById("errorBox");
+            errorBox.innerHTML = `<div class="error">${message}</div>`;
+        }
+        
+        function hideError() {
+            document.getElementById("errorBox").innerHTML = "";
+        }
+        
+        // Initial update and polling
+        updateDashboard();
+        setInterval(updateDashboard, UPDATE_INTERVAL);
+    </script>
+</body>
+</html>

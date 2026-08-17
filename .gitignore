@@ -1,0 +1,16 @@
+# secrets — never commit
+.env
+*.token
+
+# runtime artifacts
+*.log
+__pycache__/
+*.pyc
+run.out
+
+# local overrides
+config.local.json
+
+# encrypted vault + any pre-scrub backups
+*.vault
+_originals_before_scrub/
